@@ -37,17 +37,23 @@ class _MyHomePageState extends State<MyHomePage> {
   BluetoothPrint bluetoothPrint = BluetoothPrint.instance;
 
   List<BluetoothDevice> _devices = [];
-  String tips = 'no device connect';
+  String tips = "";
+
 
   Future<void> initBluetooth() async {
-    bluetoothPrint.startScan(timeout: const Duration(seconds: 4));
+
+    bluetoothPrint.startScan(timeout: const Duration(seconds: 2));
 
     if (!mounted) return;
     // bool isConnected = await bluetoothPrint.isConnected ?? false;
-    bluetoothPrint.scanResults.listen((state) {
-      if (!mounted) {
+    bluetoothPrint.scanResults.listen((val) {
+      if (!mounted) return;
         setState(() {
-          _devices = state;
+          _devices = val;
+        });
+      if(_devices.isEmpty){
+        setState(() {
+          tips = "No devices";
         });
       }
     });
@@ -55,8 +61,10 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void initState() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+        await initBluetooth();
+    });
     super.initState();
-    initBluetooth();
   }
 
   @override
@@ -70,7 +78,9 @@ class _MyHomePageState extends State<MyHomePage> {
     ? Center(
     child: Text(tips),
     )
-        : ListView.builder(itemBuilder: (_, index) {
+        : ListView.builder(
+         itemCount: _devices.length,
+         itemBuilder: (_, index) {
             return ListTile(
                 leading: const Icon(Icons.print),
                 title: Text(_devices[index].name!),
@@ -83,19 +93,32 @@ class _MyHomePageState extends State<MyHomePage> {
   }
 
   Future<void> _startPrint(BluetoothDevice device) async {
-    if (device.address != null) {
-      await bluetoothPrint.connect(device);
-      Map<String, dynamic> config = {};
-      config['width'] = 40;
-      config['height'] = 70;
-      config['gap'] = 2;
-      List<LineText> list = [];
 
-      list.add(LineText(type: LineText.TYPE_TEXT, content: "Hello TEST", weight: 1, align: LineText.ALIGN_CENTER,linefeed: 1));
-      list.add(LineText(type: LineText.TYPE_TEXT, content: "REUSSI", weight: 1, align: LineText.ALIGN_CENTER,linefeed: 1));
+    if (device.address != null) {
+
+      bool isConnected = await bluetoothPrint.isConnected ?? false;
+
+      if(!isConnected){
+         await bluetoothPrint.connect(device);
+      }
+
+
+      print(isConnected);
+
+      Map<String, dynamic> config = Map();
+      List<LineText> list = [];
+      list.add(LineText(type: LineText.TYPE_TEXT, content: 'Maitre Josy', weight: 1, align: LineText.ALIGN_CENTER,linefeed: 1));
+      list.add(LineText(type: LineText.TYPE_TEXT, content: 'this is conent left', weight: 0, align: LineText.ALIGN_LEFT,linefeed: 1));
+      list.add(LineText(type: LineText.TYPE_TEXT, content: 'this is conent right', align: LineText.ALIGN_RIGHT,linefeed: 1));
+      list.add(LineText(linefeed: 1));
+      list.add(LineText(type: LineText.TYPE_BARCODE, content: 'A12312112', size:10, align: LineText.ALIGN_CENTER, linefeed: 1));
+      list.add(LineText(linefeed: 1));
+      list.add(LineText(type: LineText.TYPE_QRCODE, content: 'qrcode i', size:10, align: LineText.ALIGN_CENTER, linefeed: 1));
+      list.add(LineText(linefeed: 1));
 
       // here add configuration
       await bluetoothPrint.printReceipt(config, list);
+
     }
   }
 
